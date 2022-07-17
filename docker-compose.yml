@@ -1,0 +1,293 @@
+# For more information: https://laravel.com/docs/sail
+version: '3'
+services:
+    api-gateway:
+        image: devopsfaith/krakend:2.0.4
+        volumes:
+            - ./src/api-gateway:/etc/krakend
+        networks:
+            - sail
+        ports:
+            - "8080:8080"
+        command: ["run", "-d", "-c", "/etc/krakend/krakend-config.json"]
+        depends_on:
+            - account-service
+            - registration-service
+            - registrant-service
+            - announcement-service
+            - mail-service
+    registration-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8001}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/registration-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - registration-db
+            - redis
+    registrant-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8002}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/registrant-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - registrant-db
+            - redis
+    announcement-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8003}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/announcement-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - announcement-db
+            - redis
+    mail-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8004}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/mail-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - redis
+    institution-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8005}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/institution-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - institution-db
+            - redis
+    account-service:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8006}:80'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - './src/account-service:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - account-db
+            - redis
+    payment-service:
+        build:
+            context: ./src/payment-service
+            dockerfile: Dockerfile
+        ports:
+            - '${APP_PORT:-8007}:3353'
+        networks:
+            - sail
+        depends_on:
+            - payment-db
+            - redis
+    registration-db:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3316}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD_REGISTRATION}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE_REGISTRATION}'
+            MYSQL_USER: '${DB_USERNAME_REGISTRATION}'
+            MYSQL_PASSWORD: '${DB_PASSWORD_REGISTRATION}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './src/registration-service/sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD_REGISTRATION}"]
+            retries: 3
+            timeout: 5s
+    registrant-db:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3317}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD_REGISTRANT}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE_REGISTRANT}'
+            MYSQL_USER: '${DB_USERNAME_REGISTRANT}'
+            MYSQL_PASSWORD: '${DB_PASSWORD_REGISTRANT}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './src/registrant-service/sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD_REGISTRANT}"]
+            retries: 3
+            timeout: 5s
+    announcement-db:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3318}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD_ANNOUNCEMENT}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE_ANNOUNCEMENT}'
+            MYSQL_USER: '${DB_USERNAME_ANNOUNCEMENT}'
+            MYSQL_PASSWORD: '${DB_PASSWORD_ANNOUNCEMENT}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './src/announcement-service/sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD_ANNOUNCEMENT}"]
+            retries: 3
+            timeout: 5s
+    institution-db:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3319}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD_INSTITUTION}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE_INSTITUTION}'
+            MYSQL_USER: '${DB_USERNAME_INSTITUTION}'
+            MYSQL_PASSWORD: '${DB_PASSWORD_INSTITUTION}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './src/institution-service/sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD_INSTITUTION}"]
+            retries: 3
+            timeout: 5s
+    account-db:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3320}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD_ACCOUNT}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE_ACCOUNT}'
+            MYSQL_USER: '${DB_USERNAME_ACCOUNT}'
+            MYSQL_PASSWORD: '${DB_PASSWORD_ACCOUNT}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './src/account-service/sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD_ACCOUNT}"]
+            retries: 3
+            timeout: 5s
+    payment-db:
+        image: 'postgres:12.10-alpine'
+        ports:
+            - '${FORWARD_DB_PORT:-3321}:5432'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE_PAYMENT}'
+            POSTGRES_USER: '${DB_USERNAME_PAYMENT}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD_PAYMENT}'
+        volumes:
+            - './src/payment-service/postgres:/var/lib/postgres'
+        networks:
+            - sail
+    redis:
+        image: 'redis:alpine'
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
+        volumes:
+            - 'sail-redis:/data'
+        networks:
+            - sail
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            retries: 3
+            timeout: 5s
+networks:
+    sail:
+        driver: bridge
+volumes:
+    sail-mysql:
+        driver: local
+    sail-redis:
+        driver: local
